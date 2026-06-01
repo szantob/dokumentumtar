@@ -7,6 +7,12 @@
 		"directory": "./dist",
 		"binding": "ASSETS"
 	},
+	"r2_buckets": [
+		{
+			"binding": "DOKUMENTUMTAR",
+			"bucket_name": "dokumentumtar"
+		}
+	],
 	"observability": {
 		"enabled": true
 	},
