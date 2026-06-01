@@ -1,4 +1,5 @@
 ---
+export const prerender = false;
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
@@ -6,45 +7,522 @@ import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="hu">
 	<head>
 		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
 	</head>
 	<body>
 		<Header />
 		<main>
-			<h1>🧑‍🚀 Hello, Astronaut!</h1>
-			<p>
-				Welcome to the official <a href="https://astro.build/">Astro</a> blog starter template. This
-				template serves as a lightweight, minimally-styled starting point for anyone looking to build
-				a personal website, blog, or portfolio with Astro.
-			</p>
-			<p>
-				This template comes with a few integrations already configured in your
-				<code>astro.config.mjs</code> file. You can customize your setup with
-				<a href="https://astro.build/integrations">Astro Integrations</a> to add tools like Tailwind,
-				React, or Vue to your project.
-			</p>
-			<p>Here are a few ideas on how to get started with the template:</p>
-			<ul>
-				<li>Edit this page in <code>src/pages/index.astro</code></li>
-				<li>Edit the site header items in <code>src/components/Header.astro</code></li>
-				<li>Add your name to the footer in <code>src/components/Footer.astro</code></li>
-				<li>Check out the included blog posts in <code>src/content/blog/</code></li>
-				<li>Customize the blog post page layout in <code>src/layouts/BlogPost.astro</code></li>
-			</ul>
-			<p>
-				Have fun! If you get stuck, remember to <a href="https://docs.astro.build/"
-					>read the docs
-				</a> or <a href="https://astro.build/chat">join us on Discord</a> to ask questions.
-			</p>
-			<p>
-				Looking for a blog template with a bit more personality? Check out <a
-					href="https://github.com/Charca/astro-blog-template"
-					>astro-blog-template
-				</a> by <a href="https://twitter.com/Charca">Maxi Ferreira</a>.
-			</p>
+			<div class="app-container">
+				<!-- Sidebar -->
+				<aside class="sidebar" id="sidebar">
+					<div class="sidebar-header">
+						<h3>Kategóriák</h3>
+					</div>
+					<!-- Mobile dropdown -->
+					<div class="mobile-category-select">
+						<select id="mobileCategorySelect">
+							<option value="">Összes dokumentum</option>
+						</select>
+					</div>
+					<!-- Desktop tree -->
+					<nav class="category-tree" id="categoryTree">
+						<ul>
+							<li>
+								<button class="cat-btn active" data-category="" data-subcategory="">
+									📂 Összes dokumentum
+								</button>
+							</li>
+						</ul>
+					</nav>
+				</aside>
+
+				<!-- Main content -->
+				<section class="content">
+					<div class="content-header">
+						<h2 id="currentCategoryTitle">Összes dokumentum</h2>
+						<div class="search-box">
+							<input
+								type="search"
+								id="searchInput"
+								placeholder="Keresés dokumentum neve szerint…"
+								aria-label="Dokumentumok keresése"
+							/>
+						</div>
+					</div>
+
+					<div id="loadingState" class="state-message">Dokumentumok betöltése…</div>
+					<div id="emptyState" class="state-message" style="display:none">
+						Nincs megjeleníthető dokumentum.
+					</div>
+					<div id="errorState" class="state-message error" style="display:none">
+						Hiba történt a dokumentumok betöltésekor.
+					</div>
+
+					<table class="doc-table" id="docTable" style="display:none">
+						<thead>
+							<tr>
+								<th class="col-icon"></th>
+								<th class="col-name">Dokumentum neve</th>
+								<th class="col-category">Kategória</th>
+								<th class="col-date">Feltöltve</th>
+								<th class="col-size">Méret</th>
+								<th class="col-action"></th>
+							</tr>
+						</thead>
+						<tbody id="docTableBody"></tbody>
+					</table>
+				</section>
+			</div>
 		</main>
 		<Footer />
 	</body>
 </html>
+
+<script>
+  // DocumentItem mirrors src/types/documents.ts; redefined here because
+  // Astro <script> blocks run client-side and cannot import server-side modules.
+  // Note: `uploaded` is typed as string here because JSON.stringify serializes Date to string.
+  interface DocumentItem {
+    key: string;
+    name: string;
+    category: string;
+    subcategory: string | null;
+    size: number;
+    uploaded: string;
+    downloadUrl: string;
+  }
+
+  let allDocuments: DocumentItem[] = [];
+  let activeCategory = '';
+  let activeSubcategory = '';
+
+  function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  function formatDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('hu-HU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+
+  function getFileIcon(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    if (ext === 'pdf') return '📄';
+    if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) return '📝';
+    if (['xls', 'xlsx', 'ods', 'csv'].includes(ext)) return '📊';
+    return '📁';
+  }
+
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function buildCategoryTree(docs: DocumentItem[]): void {
+    const tree: Record<string, Set<string>> = {};
+    for (const doc of docs) {
+      if (!tree[doc.category]) tree[doc.category] = new Set();
+      if (doc.subcategory) tree[doc.category].add(doc.subcategory);
+    }
+
+    const treeEl = document.getElementById('categoryTree')!;
+    const mobileSelect = document.getElementById('mobileCategorySelect') as HTMLSelectElement;
+
+    // Clear previous dynamic options (keep first "all" option)
+    while (mobileSelect.options.length > 1) mobileSelect.remove(1);
+
+    let html = '<ul>';
+    html += `<li><button class="cat-btn${activeCategory === '' ? ' active' : ''}" data-category="" data-subcategory="">📂 Összes dokumentum</button></li>`;
+
+    for (const [cat, subcats] of Object.entries(tree).sort()) {
+      const catCount = docs.filter(d => d.category === cat).length;
+      const isActiveCat = activeCategory === cat && activeSubcategory === '';
+      html += `<li>
+        <button class="cat-btn${isActiveCat ? ' active' : ''}" data-category="${escapeHtml(cat)}" data-subcategory="">
+          📂 ${escapeHtml(cat)} <span class="count">(${catCount})</span>
+        </button>`;
+
+      // mobile option
+      const optAll = document.createElement('option');
+      optAll.value = `${cat}||`;
+      optAll.textContent = cat;
+      mobileSelect.add(optAll);
+
+      if (subcats.size > 0) {
+        html += '<ul class="subcategory-list">';
+        for (const sub of Array.from(subcats).sort()) {
+          const subCount = docs.filter(d => d.category === cat && d.subcategory === sub).length;
+          const isActiveSub = activeCategory === cat && activeSubcategory === sub;
+          html += `<li><button class="cat-btn sub-btn${isActiveSub ? ' active' : ''}" data-category="${escapeHtml(cat)}" data-subcategory="${escapeHtml(sub)}">
+            └ ${escapeHtml(sub)} <span class="count">(${subCount})</span>
+          </button></li>`;
+
+          const optSub = document.createElement('option');
+          optSub.value = `${cat}||${sub}`;
+          optSub.textContent = `  └ ${sub}`;
+          mobileSelect.add(optSub);
+        }
+        html += '</ul>';
+      }
+      html += '</li>';
+    }
+    html += '</ul>';
+    treeEl.innerHTML = html;
+
+    // Sync mobile select value
+    mobileSelect.value = activeCategory ? `${activeCategory}||${activeSubcategory}` : '';
+
+    // Attach click handlers
+    treeEl.querySelectorAll<HTMLButtonElement>('.cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCategory = btn.dataset.category ?? '';
+        activeSubcategory = btn.dataset.subcategory ?? '';
+        renderDocuments();
+        buildCategoryTree(allDocuments);
+      });
+    });
+  }
+
+  function renderDocuments(): void {
+    const searchVal = (document.getElementById('searchInput') as HTMLInputElement).value.toLowerCase();
+
+    let filtered = allDocuments.filter(doc => {
+      const matchCat = activeCategory === '' || doc.category === activeCategory;
+      const matchSub = activeSubcategory === '' || doc.subcategory === activeSubcategory;
+      const matchSearch = searchVal === '' || doc.name.toLowerCase().includes(searchVal);
+      return matchCat && matchSub && matchSearch;
+    });
+
+    // Update title
+    const titleEl = document.getElementById('currentCategoryTitle')!;
+    if (activeSubcategory) {
+      titleEl.textContent = `${activeCategory} / ${activeSubcategory}`;
+    } else if (activeCategory) {
+      titleEl.textContent = activeCategory;
+    } else {
+      titleEl.textContent = 'Összes dokumentum';
+    }
+
+    const tbody = document.getElementById('docTableBody')!;
+    const table = document.getElementById('docTable')!;
+    const empty = document.getElementById('emptyState')!;
+
+    if (filtered.length === 0) {
+      table.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+
+    empty.style.display = 'none';
+    table.style.display = 'table';
+
+    tbody.innerHTML = filtered.map(doc => {
+      const icon = getFileIcon(doc.name);
+      const catLabel = doc.subcategory ? `${escapeHtml(doc.category)} / ${escapeHtml(doc.subcategory)}` : escapeHtml(doc.category);
+      return `<tr>
+        <td class="col-icon">${icon}</td>
+        <td class="col-name">${escapeHtml(doc.name)}</td>
+        <td class="col-category">${catLabel}</td>
+        <td class="col-date">${formatDate(doc.uploaded)}</td>
+        <td class="col-size">${formatSize(doc.size)}</td>
+        <td class="col-action">
+          <a href="${`/api/download/${doc.key.split('/').map(encodeURIComponent).join('/')}`}" class="download-btn" download>Letöltés</a>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function loadDocuments(): Promise<void> {
+    const loading = document.getElementById('loadingState')!;
+    const error = document.getElementById('errorState')!;
+    try {
+      const res = await fetch('/api/documents');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      allDocuments = await res.json();
+      loading.style.display = 'none';
+      buildCategoryTree(allDocuments);
+      renderDocuments();
+    } catch (e) {
+      loading.style.display = 'none';
+      error.style.display = 'block';
+    }
+  }
+
+  // Search input handler
+  document.getElementById('searchInput')!.addEventListener('input', renderDocuments);
+
+  // Mobile select handler
+  document.getElementById('mobileCategorySelect')!.addEventListener('change', (e) => {
+    const val = (e.target as HTMLSelectElement).value;
+    if (!val) {
+      activeCategory = '';
+      activeSubcategory = '';
+    } else {
+      const [cat, sub] = val.split('||');
+      activeCategory = cat ?? '';
+      activeSubcategory = sub ?? '';
+    }
+    renderDocuments();
+    buildCategoryTree(allDocuments);
+  });
+
+  loadDocuments();
+</script>
+
+<style>
+  main {
+    padding: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .app-container {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 1rem;
+    position: sticky;
+    top: 1rem;
+  }
+
+  .sidebar-header h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .mobile-category-select {
+    display: none;
+  }
+
+  .mobile-category-select select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .category-tree ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .category-tree li {
+    margin: 0;
+  }
+
+  .category-tree .subcategory-list {
+    padding-left: 0.75rem;
+  }
+
+  .cat-btn {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #333;
+    transition: background 0.15s;
+  }
+
+  .cat-btn:hover {
+    background: #e8eaf6;
+  }
+
+  .cat-btn.active {
+    background: #3f51b5;
+    color: white;
+    font-weight: 600;
+  }
+
+  .cat-btn .count {
+    opacity: 0.7;
+    font-size: 0.8em;
+  }
+
+  .sub-btn {
+    font-size: 0.82rem;
+    padding-left: 0.75rem;
+  }
+
+  /* Main content */
+  .content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .content-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #222;
+  }
+
+  .search-box input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    width: 260px;
+    max-width: 100%;
+  }
+
+  .state-message {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    font-style: italic;
+  }
+
+  .state-message.error {
+    color: #c62828;
+  }
+
+  /* Document table */
+  .doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .doc-table th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    background: #f0f0f0;
+    border-bottom: 2px solid #ddd;
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+  }
+
+  .doc-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+  }
+
+  .doc-table tr:hover td {
+    background: #fafafa;
+  }
+
+  .col-icon {
+    width: 2rem;
+    font-size: 1.2rem;
+    text-align: center;
+  }
+
+  .col-name {
+    word-break: break-word;
+  }
+
+  .col-category {
+    white-space: nowrap;
+    color: #555;
+    font-size: 0.82rem;
+  }
+
+  .col-date {
+    white-space: nowrap;
+    color: #666;
+    font-size: 0.82rem;
+  }
+
+  .col-size {
+    white-space: nowrap;
+    color: #666;
+    font-size: 0.82rem;
+    text-align: right;
+  }
+
+  .col-action {
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .download-btn {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    background: #3f51b5;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+
+  .download-btn:hover {
+    background: #303f9f;
+  }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .app-container {
+      flex-direction: column;
+    }
+
+    .sidebar {
+      width: 100%;
+      position: static;
+    }
+
+    .category-tree {
+      display: none;
+    }
+
+    .mobile-category-select {
+      display: block;
+    }
+
+    .content-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .search-box input {
+      width: 100%;
+    }
+
+    .col-category,
+    .col-date {
+      display: none;
+    }
+  }
+</style>
