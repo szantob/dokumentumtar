@@ -133,7 +133,7 @@ export async function listTopicDocuments(db: D1Database, topicId: number): Promi
   const roots: Document[] = [];
 
   for (const document of documents) {
-    if (document.parent_id == null) {
+    if (document.parent_id === null) {
       roots.push(document);
       continue;
     }

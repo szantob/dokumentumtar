@@ -190,7 +190,7 @@ import BaseHead from '../../components/BaseHead.astro';
   }
 
   function formatDate(value: string | null): string {
-    if (!value) return 'Nincs megadva';
+    if (!value) return 'Nincs esemény dátum';
     return new Date(value).toLocaleString('hu-HU', {
       year: 'numeric',
       month: 'long',

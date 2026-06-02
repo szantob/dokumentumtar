@@ -17,9 +17,9 @@ function sanitizeFilename(filename: string): string {
   const sanitized = basename
     .normalize('NFKC')
     .replace(/[\u0000-\u001f\u007f]+/g, '')
+    .replace(/\.\.+/g, '-')
     .replace(/\s+/g, '_')
     .replace(/[^A-Za-z0-9._-]/g, '-')
-    .replace(/\.\.+/g, '.')
     .replace(/^\.+/, '')
     .replace(/-+/g, '-');
 
