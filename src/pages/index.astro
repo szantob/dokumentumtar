@@ -1,8 +1,6 @@
 ---
 export const prerender = false;
 import BaseHead from '../components/BaseHead.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 ---
 
@@ -10,36 +8,39 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 <html lang="hu">
   <head>
     <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <Header />
-    <main class="page-shell">
-      <section class="hero">
-        <div>
-          <p class="eyebrow">Nyilvános dokumentumtár</p>
-          <h1>Dokumentumok és mellékletek</h1>
-          <p>Témakörök szerint rendezett, kereshető dokumentumlista.</p>
+    <header class="site-header">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="site-title">Dokumentumtár</span>
+          <span class="site-subtitle">Nyilvános dokumentumtár</span>
         </div>
-        <a href="/admin" class="admin-link">Admin felület</a>
-      </section>
+        <a href="/admin" class="admin-btn">Admin felület</a>
+      </div>
+    </header>
 
-      <section class="filters">
-        <label class="search-box">
-          <span>Keresés</span>
-          <input type="search" id="searchInput" placeholder="Keresés dokumentum címe szerint…" />
-        </label>
-        <div>
-          <p class="filter-label">Címkék</p>
-          <div id="tagFilters" class="tag-filters"></div>
-        </div>
-      </section>
+    <main class="page-shell">
+      <div class="filter-bar">
+        <input type="search" id="searchInput" placeholder="Keresés cím szerint…" class="search-input" />
+        <div id="tagFilters" class="tag-filters"></div>
+      </div>
 
       <div id="loadingState" class="state-box">Témák betöltése…</div>
-      <div id="errorState" class="state-box error hidden">Hiba történt a dokumentumok betöltésekor.</div>
-      <div id="emptyState" class="state-box hidden">Nincs a szűrésnek megfelelő dokumentum.</div>
-      <section id="topicsContainer" class="topics"></section>
+      <div id="errorState" class="state-box state-error hidden">Hiba történt a dokumentumok betöltésekor.</div>
+      <div id="emptyState" class="state-box hidden">
+        <div class="empty-icon">📁</div>
+        <p>Nincs megjelenítendő téma</p>
+      </div>
+      <section id="topicsContainer" class="topics-container"></section>
     </main>
-    <Footer />
+
+    <footer class="site-footer">
+      <p>Dokumentumtár — Nyilvános dokumentumtár</p>
+    </footer>
   </body>
 </html>
 
@@ -126,11 +127,6 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  function renderBadge(label: string, color: string | null, className = 'badge'): string {
-    const style = color ? ` style="--badge-color:${escapeHtml(color)}"` : '';
-    return `<span class="${className}"${style}>${escapeHtml(label)}</span>`;
-  }
-
   function matchesSearch(topic: Topic, searchValue: string): boolean {
     if (!searchValue) {
       return true;
@@ -145,28 +141,26 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
   function renderDocumentList(documents: Document[], level = 0): string {
     if (documents.length === 0) {
-      return '<p class="muted">Ehhez a témához jelenleg nincs aktív dokumentum.</p>';
+      return '<p class="no-docs">Ehhez a témához jelenleg nincs aktív dokumentum.</p>';
     }
 
-    return documents.map((document) => {
+    return documents.map((document, idx) => {
       const attachments = document.attachments && document.attachments.length > 0
         ? `<div class="attachment-list">${renderDocumentList(document.attachments, level + 1)}</div>`
         : '';
       const downloadPath = `/api/download/${document.r2_key.split('/').map(encodeURIComponent).join('/')}`;
-      return `<article class="document-card${level > 0 ? ' attachment-card' : ''}">
-        <div>
-          <div class="document-topline">
-            ${document.document_type ? renderBadge(document.document_type.name, document.document_type.color) : ''}
-            <strong>${escapeHtml(document.title)}</strong>
-          </div>
-          <p class="muted meta-row">
-            ${escapeHtml(formatSize(document.file_size))}
-            ${document.reference_no ? ` · Iktatószám: ${escapeHtml(document.reference_no)}` : ''}
-          </p>
+      const badgeColor = document.document_type?.color ?? '#475569';
+      const typeBadge = `<span class="doc-type-badge" style="--badge-color:${escapeHtml(badgeColor)}">${escapeHtml(document.document_type?.name ?? 'Melléklet')}</span>`;
+      const rowClass = `doc-row${level === 0 && idx % 2 !== 0 ? ' row-alt' : ''}${level > 0 ? ' attachment-row' : ''}`;
+      return `<div class="doc-item${level > 0 ? ' attachment-item' : ''}">
+        <div class="${rowClass}">
+          ${typeBadge}
+          <a href="${downloadPath}" class="doc-title-link" download>${escapeHtml(document.title)}</a>
+          <span class="doc-size">${escapeHtml(formatSize(document.file_size))}</span>
+          <a href="${downloadPath}" class="pdf-btn" download>PDF</a>
         </div>
-        <a href="${downloadPath}" class="download-link" download>Letöltés</a>
         ${attachments}
-      </article>`;
+      </div>`;
     }).join('');
   }
 
@@ -179,11 +173,14 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
     const tags = Array.from(tagsBySlug.values()).sort((left, right) => left.sort_order - right.sort_order || left.name.localeCompare(right.name, 'hu'));
 
     tagFiltersEl.innerHTML = [
-      `<button type="button" class="filter-chip${activeTagSlug === '' ? ' active' : ''}" data-tag="">Összes</button>`,
-      ...tags.map((tag) => `<button type="button" class="filter-chip${activeTagSlug === tag.slug ? ' active' : ''}" data-tag="${escapeHtml(tag.slug)}">${renderBadge(tag.name, tag.color, 'badge tag-badge')}</button>`),
+      `<button type="button" class="filter-pill${activeTagSlug === '' ? ' active' : ''}" data-tag="">Összes</button>`,
+      ...tags.map((tag) => {
+        const color = escapeHtml(tag.color ?? '#475569');
+        return `<button type="button" class="filter-pill${activeTagSlug === tag.slug ? ' active' : ''}" data-tag="${escapeHtml(tag.slug)}" style="--tag-color:${color}">${escapeHtml(tag.name)}</button>`;
+      }),
     ].join('');
 
-    tagFiltersEl.querySelectorAll<HTMLButtonElement>('.filter-chip').forEach((button) => {
+    tagFiltersEl.querySelectorAll<HTMLButtonElement>('.filter-pill').forEach((button) => {
       button.addEventListener('click', () => {
         activeTagSlug = button.dataset.tag ?? '';
         renderTagFilters();
@@ -201,23 +198,39 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
     emptyStateEl.classList.toggle('hidden', filteredTopics.length > 0);
     topicsContainerEl.innerHTML = filteredTopics.map((topic) => {
-      const badges = (topic.tags ?? []).map((tag) => renderBadge(tag.name, tag.color, 'badge tag-badge')).join('');
-      return `<details class="topic-card" ${searchValue || activeTagSlug ? 'open' : ''}>
-        <summary>
-          <div>
-            <h2>${escapeHtml(topic.title)}</h2>
-            <p class="muted">${escapeHtml(formatDate(topic.event_date))}</p>
+      const tagBadges = (topic.tags ?? []).map((tag) => {
+        const color = escapeHtml(tag.color ?? '#475569');
+        return `<span class="tag-pill" style="--tag-color:${color}">${escapeHtml(tag.name)}</span>`;
+      }).join('');
+      const docCount = topic.document_count ?? topic.documents?.length ?? 0;
+      return `<div class="topic-section" data-open="true">
+        <div class="topic-header">
+          <div class="topic-header-left">
+            <h2 class="topic-title">${escapeHtml(topic.title)}</h2>
+            <div class="topic-meta-row">
+              <div class="tag-row">${tagBadges}</div>
+              <span class="topic-date">${escapeHtml(formatDate(topic.event_date))}</span>
+            </div>
           </div>
-          <div class="summary-side">
-            <div class="tag-row">${badges}</div>
-            <span class="count-pill">${topic.document_count ?? topic.documents?.length ?? 0} dokumentum</span>
+          <div class="topic-header-right">
+            <span class="doc-count-badge">${docCount} dokumentum</span>
+            <svg class="collapse-icon" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
           </div>
-        </summary>
+        </div>
         <div class="topic-content">
           ${renderDocumentList(topic.documents ?? [])}
         </div>
-      </details>`;
+      </div>`;
     }).join('');
+
+    topicsContainerEl.querySelectorAll<HTMLElement>('.topic-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const section = header.closest<HTMLElement>('.topic-section');
+        if (section) {
+          section.dataset.open = section.dataset.open === 'true' ? 'false' : 'true';
+        }
+      });
+    });
   }
 
   async function fetchJson<T>(url: string): Promise<T> {
@@ -249,208 +262,470 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 </script>
 
 <style>
+  :root {
+    --blue: #1a56db;
+    --blue-hover: #1648c0;
+    --blue-tint: #f0f4ff;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --border-light: #f3f4f6;
+    --bg-alt: #f9fafb;
+    --bg-footer: #f7f6f2;
+    --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.08);
+    --radius: 8px;
+    --radius-sm: 4px;
+    --radius-pill: 999px;
+  }
+
+  :global(body) {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: #fff;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+    background-image: none;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    background: var(--blue);
+    color: #fff;
+  }
+
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .site-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+
+  .site-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .admin-btn {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    padding: 7px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: var(--radius-pill);
+    transition: background 150ms;
+    white-space: nowrap;
+  }
+
+  .admin-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* ── Main layout ── */
   .page-shell {
     max-width: 1100px;
     margin: 0 auto;
-    padding: 1.5rem 1rem 3rem;
+    padding: 24px 24px 48px;
   }
 
-  .hero,
-  .filters,
-  .topic-card {
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: flex;
+    gap: 16px;
+    align-items: center;
     background: #fff;
-    border: 1px solid #d8deea;
-    border-radius: 1rem;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    padding: 16px 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
   }
 
-  .hero,
-  .filters {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-  }
-
-  .eyebrow,
-  .filter-label,
-  .muted {
-    color: #5f6b7c;
-  }
-
-  .eyebrow,
-  .filter-label {
-    margin: 0 0 0.4rem;
-    font-size: 0.82rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .hero h1,
-  .topic-card h2 {
-    margin: 0;
-  }
-
-  .hero p,
-  .topic-card p,
-  .meta-row {
-    margin: 0.35rem 0 0;
-  }
-
-  .admin-link,
-  .download-link,
-  .filter-chip,
-  .count-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .admin-link,
-  .download-link,
-  .filter-chip {
-    padding: 0.7rem 1rem;
-    border: none;
-    background: #1d4ed8;
-    color: #fff;
-    cursor: pointer;
-  }
-
-  .search-box {
-    display: grid;
-    gap: 0.4rem;
+  .search-input {
     flex: 1;
-  }
-
-  .search-box input {
-    width: 100%;
-    padding: 0.8rem 0.95rem;
-    border-radius: 0.85rem;
-    border: 1px solid #cbd5e1;
+    min-width: 200px;
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     font: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: #fff;
+    transition: border-color 150ms, box-shadow 150ms;
   }
 
-  .tag-filters,
-  .tag-row {
+  .search-input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12);
+  }
+
+  .tag-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 8px;
+    align-items: center;
   }
 
-  .filter-chip {
-    background: #e2e8f0;
-    color: #1e293b;
-    padding: 0.2rem;
+  .filter-pill {
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid #d1d5db;
+    border-radius: var(--radius-pill);
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms, border-color 150ms, color 150ms;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 
-  .filter-chip.active {
-    background: #1d4ed8;
+  .filter-pill:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+
+  .filter-pill.active {
+    background: var(--blue);
+    border-color: var(--blue);
     color: #fff;
   }
 
-  .badge {
-    --badge-color: #475569;
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.65rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--badge-color) 14%, white);
-    color: var(--badge-color);
-    font-size: 0.78rem;
-    font-weight: 700;
-  }
-
-  .topics {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .topic-card summary {
-    list-style: none;
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1.25rem;
-    cursor: pointer;
-  }
-
-  .topic-card summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .summary-side {
-    display: grid;
-    gap: 0.75rem;
-    justify-items: end;
-  }
-
-  .count-pill {
-    padding: 0.35rem 0.8rem;
-    background: #eef2ff;
-    color: #4338ca;
-  }
-
-  .topic-content {
-    padding: 0 1.25rem 1.25rem;
-    display: grid;
-    gap: 0.85rem;
-  }
-
-  .document-card {
-    display: grid;
-    gap: 0.75rem;
-    padding: 1rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.9rem;
-  }
-
-  .document-topline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-  }
-
-  .attachment-list {
-    display: grid;
-    gap: 0.65rem;
-    padding-left: 1rem;
-    border-left: 2px solid #dbe4ff;
-  }
-
-  .attachment-card {
-    background: #f8fbff;
-  }
-
+  /* ── State boxes ── */
   .state-box {
-    padding: 1rem;
+    padding: 48px 24px;
     text-align: center;
-    color: #5f6b7c;
+    color: var(--muted);
+    font-size: 15px;
   }
 
-  .state-box.error {
-    color: #b91c1c;
+  .state-box.state-error {
+    color: #dc2626;
   }
 
   .hidden {
+    display: none !important;
+  }
+
+  .empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    line-height: 1;
+  }
+
+  .state-box p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  /* ── Topics container ── */
+  .topics-container {
+    display: grid;
+    gap: 16px;
+  }
+
+  /* ── Topic section ── */
+  .topic-section {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .topic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--blue-tint);
+    border-left: 4px solid var(--blue);
+    cursor: pointer;
+    user-select: none;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .topic-section[data-open="false"] .topic-header {
+    border-radius: var(--radius);
+  }
+
+  .topic-header-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topic-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .topic-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag-pill {
+    --tag-color: #475569;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 500;
+    background: color-mix(in srgb, var(--tag-color) 15%, white);
+    color: var(--tag-color);
+    line-height: 1.6;
+  }
+
+  .topic-date {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .topic-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .doc-count-badge {
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .collapse-icon {
+    transition: transform 200ms ease;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .topic-section[data-open="false"] .collapse-icon {
+    transform: rotate(-90deg);
+  }
+
+  /* ── Topic content ── */
+  .topic-content {
+    background: #fff;
+    border-top: 1px solid var(--border);
+  }
+
+  .topic-section[data-open="false"] .topic-content {
     display: none;
   }
 
-  @media (max-width: 760px) {
-    .hero,
-    .filters,
-    .topic-card summary {
-      flex-direction: column;
-      align-items: flex-start;
+  /* ── Document rows ── */
+  .doc-item:not(:last-child) {
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .doc-row {
+    display: grid;
+    grid-template-columns: 140px 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 16px;
+    background: #fff;
+    transition: background 120ms;
+  }
+
+  .doc-row.row-alt {
+    background: var(--bg-alt);
+  }
+
+  .doc-row:hover {
+    background: var(--blue-tint);
+  }
+
+  .doc-type-badge {
+    --badge-color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+    width: 130px;
+    text-align: center;
+    background: color-mix(in srgb, var(--badge-color) 15%, white);
+    color: var(--badge-color);
+    border: 1px solid color-mix(in srgb, var(--badge-color) 35%, white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
+  }
+
+  .doc-title-link {
+    font-size: 14px;
+    color: var(--blue);
+    text-decoration: none;
+    font-weight: 500;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  .doc-title-link:hover {
+    text-decoration: underline;
+  }
+
+  .doc-size {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: right;
+    min-width: 70px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pdf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    background: #e53935;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 120ms;
+    min-height: 28px;
+  }
+
+  .pdf-btn:hover {
+    background: #c62828;
+  }
+
+  .no-docs {
+    padding: 16px;
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
+  }
+
+  /* ── Attachments ── */
+  .attachment-list {
+    border-left: 2px solid var(--border);
+    margin-left: 20px;
+  }
+
+  .attachment-row {
+    font-size: 13px;
+  }
+
+  /* ── Footer ── */
+  .site-footer {
+    background: var(--bg-footer);
+    border-top: 1px solid var(--border);
+    padding: 20px 24px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .site-footer p {
+    margin: 0;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    .header-inner {
+      padding: 0 16px;
     }
 
-    .summary-side {
-      justify-items: start;
+    .site-subtitle {
+      display: none;
+    }
+
+    .page-shell {
+      padding: 16px 16px 40px;
+    }
+
+    .filter-bar {
+      padding: 12px 16px;
+      gap: 12px;
+    }
+
+    .search-input {
+      min-width: 0;
+      width: 100%;
+      flex: none;
+    }
+
+    .topic-header {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .topic-header-right {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .doc-row {
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto;
+      row-gap: 6px;
+    }
+
+    .doc-type-badge {
+      grid-column: 1;
+      grid-row: 1;
+      width: auto;
+      max-width: 140px;
+    }
+
+    .pdf-btn {
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: end;
+    }
+
+    .doc-title-link {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+
+    .doc-size {
+      display: none;
     }
   }
 </style>

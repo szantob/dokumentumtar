@@ -7,105 +7,107 @@ import BaseHead from '../../components/BaseHead.astro';
 <html lang="hu">
   <head>
     <BaseHead title="Dokumentumtár Admin" description="Dokumentumtár adminisztráció" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <main class="admin-page">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Admin felület</p>
-          <h1>Dokumentumtár Admin</h1>
-        </div>
-        <a href="/" class="back-link">Nyilvános nézet</a>
-      </header>
+    <header class="topbar">
+      <div class="topbar-brand">
+        <span class="topbar-title">Dokumentumtár Admin</span>
+      </div>
+      <a href="/" class="topbar-public-link">Nyilvános nézet</a>
+    </header>
 
-      <div class="layout">
-        <section class="panel topics-panel">
-          <div class="panel-header">
-            <div>
-              <h2>Témák</h2>
-              <p>Válassz témát vagy hozz létre újat.</p>
+    <div class="admin-layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h2 class="sidebar-title">Témák</h2>
+          <button id="toggleTopicForm" class="btn-new-topic" type="button">+ Új téma</button>
+        </div>
+
+        <form id="createTopicForm" class="create-topic-form hidden">
+          <div class="form-field">
+            <label class="form-label" for="newTopicTitle">Cím</label>
+            <input type="text" name="title" id="newTopicTitle" required />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="newTopicDate">Esemény dátuma</label>
+            <input type="datetime-local" name="event_date" id="newTopicDate" />
+          </div>
+          <div class="form-field">
+            <span class="form-label">Címkék</span>
+            <div id="tagCheckboxList" class="checkbox-two-col"></div>
+          </div>
+          <button type="submit" class="btn-submit-full">Téma mentése</button>
+          <button type="button" id="cancelTopicForm" class="btn-cancel-link">Mégsem</button>
+        </form>
+
+        <div id="topicsState" class="sidebar-state">Témák betöltése…</div>
+        <div id="topicsList" class="topic-list"></div>
+      </aside>
+
+      <main class="content-panel">
+        <div id="detailState" class="detail-empty">Válassz ki egy témát</div>
+        <div id="topicDetail" class="hidden">
+          <div class="detail-header">
+            <div class="detail-header-inner">
+              <h2 id="detailTitle" class="detail-title"></h2>
+              <div class="detail-meta">
+                <p id="detailDate" class="text-muted"></p>
+                <div id="detailTags" class="tag-row"></div>
+              </div>
             </div>
-            <button id="toggleTopicForm" class="primary-button" type="button">+ Új téma</button>
           </div>
 
-          <form id="createTopicForm" class="card form-card hidden">
-            <h3>Új téma létrehozása</h3>
-            <label>
-              <span>Cím</span>
-              <input type="text" name="title" required />
-            </label>
-            <label>
-              <span>Esemény dátuma</span>
-              <input type="datetime-local" name="event_date" />
-            </label>
-            <fieldset>
-              <legend>Címkék</legend>
-              <div id="tagCheckboxList" class="checkbox-list"></div>
-            </fieldset>
-            <div class="form-actions">
-              <button type="submit" class="primary-button">Téma mentése</button>
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3 class="section-card-title">Dokumentumok</h3>
+              <span id="detailCount" class="text-muted"></span>
             </div>
-          </form>
+            <div id="documentList" class="document-list"></div>
+          </div>
 
-          <div id="topicsState" class="state-box">Témák betöltése…</div>
-          <div id="topicsList" class="topic-list"></div>
-        </section>
-
-        <section class="panel detail-panel">
-          <div id="detailState" class="state-box">Válassz ki egy témát a részletekhez.</div>
-          <div id="topicDetail" class="hidden">
-            <div class="detail-header card">
-              <div>
-                <p class="eyebrow">Kiválasztott téma</p>
-                <h2 id="detailTitle"></h2>
-                <p id="detailDate" class="muted"></p>
-              </div>
-              <div id="detailTags" class="tag-row"></div>
-            </div>
-
-            <section class="card">
-              <div class="section-header">
-                <h3>Dokumentumok</h3>
-                <p id="detailCount" class="muted"></p>
-              </div>
-              <div id="documentList" class="document-list"></div>
-            </section>
-
-            <section class="card">
-              <h3>Dokumentum feltöltése</h3>
-              <form id="uploadForm" class="upload-form">
-                <label>
-                  <span>Dokumentum típusa</span>
+          <div class="section-card">
+            <h3 class="section-card-title">Dokumentum feltöltése</h3>
+            <form id="uploadForm" class="upload-form">
+              <div class="form-grid">
+                <div class="form-field">
+                  <label class="form-label" for="documentTypeSelect">Dokumentum típusa</label>
                   <select name="document_type_id" id="documentTypeSelect" required></select>
-                </label>
-                <label>
-                  <span>Cím</span>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="documentTitleInput">Cím</label>
                   <input type="text" name="title" id="documentTitleInput" required />
-                </label>
-                <label>
-                  <span>Szülő dokumentum (melléklet)</span>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="parentDocumentSelect">Szülő dokumentum (melléklet)</label>
                   <select name="parent_id" id="parentDocumentSelect">
                     <option value="">Nincs</option>
                   </select>
-                </label>
-                <label>
-                  <span>Iktatószám</span>
-                  <input type="text" name="reference_no" />
-                </label>
-                <label>
-                  <span>Fájl</span>
-                  <input type="file" name="file" id="fileInput" accept=".pdf,.doc,.docx,.xls,.xlsx" required />
-                </label>
-                <input type="hidden" name="topic_id" id="topicIdInput" />
-                <div class="form-actions">
-                  <button type="submit" class="primary-button">Feltöltés</button>
                 </div>
-              </form>
-            </section>
+                <div class="form-field">
+                  <label class="form-label" for="referenceNoInput">Iktatószám</label>
+                  <input type="text" name="reference_no" id="referenceNoInput" />
+                </div>
+              </div>
+              <div class="form-field">
+                <span class="form-label">Fájl</span>
+                <label for="fileInput" class="file-drop-area">
+                  <span id="fileUploadText" class="file-drop-text">Válassz fájlt…</span>
+                  <input type="file" name="file" id="fileInput" accept=".pdf,.doc,.docx,.xls,.xlsx" required class="file-input-hidden" />
+                </label>
+              </div>
+              <input type="hidden" name="topic_id" id="topicIdInput" />
+              <button type="submit" class="btn-upload" id="uploadSubmitBtn">Feltöltés</button>
+            </form>
+            <div id="uploadError" class="upload-error hidden"></div>
           </div>
-        </section>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
+
+    <div id="toastNotification" class="toast hidden" role="status" aria-live="polite"></div>
   </body>
 </html>
 
@@ -175,11 +177,17 @@ import BaseHead from '../../components/BaseHead.astro';
   const toggleTopicFormButton = document.getElementById('toggleTopicForm') as HTMLButtonElement;
   const fileInput = document.getElementById('fileInput') as HTMLInputElement;
   const documentTitleInput = document.getElementById('documentTitleInput') as HTMLInputElement;
+  const uploadSubmitBtn = document.getElementById('uploadSubmitBtn') as HTMLButtonElement;
+  const uploadErrorEl = document.getElementById('uploadError') as HTMLDivElement;
+  const toastEl = document.getElementById('toastNotification') as HTMLDivElement;
+  const fileUploadTextEl = document.getElementById('fileUploadText') as HTMLSpanElement;
+  const cancelTopicFormBtn = document.getElementById('cancelTopicForm') as HTMLButtonElement;
 
   let topics: Topic[] = [];
   let tags: Tag[] = [];
   let documentTypes: DocumentType[] = [];
   let selectedTopicId: number | null = null;
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   function escapeHtml(value: string): string {
     return value
@@ -211,22 +219,38 @@ import BaseHead from '../../components/BaseHead.astro';
     return `<span class="${className}"${style}>${escapeHtml(label)}</span>`;
   }
 
+  function showToast(message: string, type: 'success' | 'error' = 'success'): void {
+    if (toastTimer !== null) clearTimeout(toastTimer);
+    toastEl.textContent = message;
+    toastEl.className = `toast toast-${type}`;
+    toastTimer = setTimeout(() => {
+      toastEl.className = 'toast hidden';
+    }, 3500);
+  }
+
   function renderTopics(): void {
     topicsStateEl.style.display = topics.length > 0 ? 'none' : 'block';
     topicsStateEl.textContent = topics.length > 0 ? '' : 'Nincs még rögzített téma.';
 
     topicsListEl.innerHTML = topics.map((topic) => {
-      const active = topic.id === selectedTopicId ? ' active' : '';
-      const badges = (topic.tags ?? []).map((tag) => renderBadge(tag.name, tag.color, 'badge tag-badge')).join('');
-      return `<button type="button" class="topic-card${active}" data-topic-id="${topic.id}">
-        <strong>${escapeHtml(topic.title)}</strong>
-        <span class="muted">${escapeHtml(formatDate(topic.event_date))}</span>
-        <div class="tag-row">${badges}</div>
-        <span class="count-pill">${topic.document_count ?? 0} dokumentum</span>
+      const active = topic.id === selectedTopicId ? ' selected' : '';
+      const tagPills = (topic.tags ?? []).map((tag) => {
+        const color = escapeHtml(tag.color ?? '#475569');
+        return `<span class="tag-pill" style="--tag-color:${color}">${escapeHtml(tag.name)}</span>`;
+      }).join('');
+      return `<button type="button" class="topic-item${active}" data-topic-id="${topic.id}">
+        <span class="topic-item-title">${escapeHtml(topic.title)}</span>
+        <div class="topic-item-meta">
+          <div class="tag-row">${tagPills}</div>
+          <div class="topic-item-bottom">
+            <span class="topic-item-date">${escapeHtml(formatDate(topic.event_date))}</span>
+            <span class="topic-item-count">${topic.document_count ?? 0} dok.</span>
+          </div>
+        </div>
       </button>`;
     }).join('');
 
-    topicsListEl.querySelectorAll<HTMLButtonElement>('.topic-card').forEach((button) => {
+    topicsListEl.querySelectorAll<HTMLButtonElement>('.topic-item').forEach((button) => {
       button.addEventListener('click', () => {
         const topicId = Number(button.dataset.topicId);
         void selectTopic(topicId);
@@ -251,29 +275,47 @@ import BaseHead from '../../components/BaseHead.astro';
 
   function renderDocumentRows(documents: Document[], level = 0): string {
     if (documents.length === 0) {
-      return '<p class="muted">Ehhez a témához még nincs feltöltött dokumentum.</p>';
+      return '<p class="no-docs">Ehhez a témához még nincs feltöltött dokumentum.</p>';
     }
 
-    return documents.map((document) => {
+    return documents.map((document, idx) => {
       const attachmentMarkup = document.attachments && document.attachments.length > 0
         ? `<div class="attachment-group">${renderDocumentRows(document.attachments, level + 1)}</div>`
         : '';
       const downloadPath = `/api/download/${document.r2_key.split('/').map(encodeURIComponent).join('/')}`;
-      return `<article class="document-row${level > 0 ? ' attachment-row' : ''}">
-        <div>
-          <div class="document-title-row">
-            ${document.document_type ? renderBadge(document.document_type.name, document.document_type.color) : ''}
-            <strong>${escapeHtml(document.title)}</strong>
-          </div>
-          <p class="muted meta-row">
-            ${escapeHtml(formatSize(document.file_size))}
-            ${document.reference_no ? ` · Iktatószám: ${escapeHtml(document.reference_no)}` : ''}
-          </p>
+      const badgeColor = document.document_type?.color ?? '#475569';
+      const typeBadge = `<span class="doc-type-badge" style="--badge-color:${escapeHtml(badgeColor)}">${escapeHtml(document.document_type?.name ?? 'Melléklet')}</span>`;
+      const rowClass = `doc-row${level === 0 && idx % 2 !== 0 ? ' row-alt' : ''}${level > 0 ? ' attachment-row' : ''}`;
+      return `<div class="doc-item${level > 0 ? ' attachment-item' : ''}">
+        <div class="${rowClass}">
+          ${typeBadge}
+          <a href="${downloadPath}" class="doc-title-link" download>${escapeHtml(document.title)}</a>
+          <span class="doc-size">${escapeHtml(formatSize(document.file_size))}</span>
+          <a href="${downloadPath}" class="pdf-btn" download>PDF</a>
+          <button type="button" class="delete-btn" data-doc-id="${document.id}" title="Dokumentum törlése" aria-label="Dokumentum törlése">✕</button>
         </div>
-        <a href="${downloadPath}" class="download-link" download>Letöltés</a>
         ${attachmentMarkup}
-      </article>`;
+      </div>`;
     }).join('');
+  }
+
+  function attachDeleteHandlers(): void {
+    documentListEl.querySelectorAll<HTMLButtonElement>('.delete-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const docId = Number(btn.dataset.docId);
+        if (!confirm('Biztosan törli ezt a dokumentumot?')) return;
+        try {
+          btn.disabled = true;
+          await fetchJson(`/api/admin/documents/${docId}`, { method: 'DELETE' });
+          if (selectedTopicId !== null) {
+            await loadTopics(selectedTopicId);
+          }
+        } catch (error) {
+          btn.disabled = false;
+          showToast(error instanceof Error ? error.message : 'Hiba történt a törlés során.', 'error');
+        }
+      });
+    });
   }
 
   function populateParentOptions(documents: Document[]): void {
@@ -319,6 +361,7 @@ import BaseHead from '../../components/BaseHead.astro';
     detailTagsEl.innerHTML = (topic.tags ?? []).map((tag) => renderBadge(tag.name, tag.color, 'badge tag-badge')).join('');
     detailCountEl.textContent = `${topic.documents?.length ?? 0} fő dokumentum`;
     documentListEl.innerHTML = renderDocumentRows(topic.documents ?? []);
+    attachDeleteHandlers();
     populateParentOptions(topic.documents ?? []);
     topicIdInput.value = String(topic.id);
     detailStateEl.style.display = 'none';
@@ -337,6 +380,10 @@ import BaseHead from '../../components/BaseHead.astro';
 
   toggleTopicFormButton.addEventListener('click', () => {
     createTopicForm.classList.toggle('hidden');
+  });
+
+  cancelTopicFormBtn.addEventListener('click', () => {
+    createTopicForm.classList.add('hidden');
   });
 
   createTopicForm.addEventListener('submit', async (event) => {
@@ -363,10 +410,10 @@ import BaseHead from '../../components/BaseHead.astro';
 
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
+    fileUploadTextEl.textContent = file ? file.name : 'Válassz fájlt…';
     if (!file || documentTitleInput.value.trim()) {
       return;
     }
-
     documentTitleInput.value = file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
   });
 
@@ -376,15 +423,31 @@ import BaseHead from '../../components/BaseHead.astro';
       throw new Error('Nincs kiválasztott téma.');
     }
 
-    const formData = new FormData(uploadForm);
-    await fetchJson('/api/admin/documents', {
-      method: 'POST',
-      body: formData,
-    });
+    uploadSubmitBtn.disabled = true;
+    uploadSubmitBtn.textContent = 'Feltöltés…';
+    uploadErrorEl.classList.add('hidden');
+    uploadErrorEl.textContent = '';
 
-    uploadForm.reset();
-    topicIdInput.value = String(selectedTopicId);
-    await loadTopics(selectedTopicId);
+    try {
+      const formData = new FormData(uploadForm);
+      await fetchJson('/api/admin/documents', {
+        method: 'POST',
+        body: formData,
+      });
+
+      uploadForm.reset();
+      fileUploadTextEl.textContent = 'Válassz fájlt…';
+      topicIdInput.value = String(selectedTopicId);
+      showToast('✔ Dokumentum feltöltve');
+      await loadTopics(selectedTopicId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Hiba történt a feltöltés során.';
+      uploadErrorEl.textContent = message;
+      uploadErrorEl.classList.remove('hidden');
+    } finally {
+      uploadSubmitBtn.disabled = false;
+      uploadSubmitBtn.textContent = 'Feltöltés';
+    }
   });
 
   void initialize().catch((error) => {
@@ -394,249 +457,709 @@ import BaseHead from '../../components/BaseHead.astro';
 </script>
 
 <style>
+  :root {
+    --blue: #1a56db;
+    --blue-hover: #1648c0;
+    --blue-tint: #eff6ff;
+    --slate-dark: #1e293b;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --bg-sidebar: #f8fafc;
+    --bg-alt: #f9fafb;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --radius: 8px;
+    --radius-sm: 4px;
+    --radius-pill: 999px;
+  }
+
   :global(body) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: #f8fafc;
     margin: 0;
-    background: #f4f6fb;
+    padding: 0;
+    line-height: 1.5;
+    background-image: none;
   }
 
-  .admin-page {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 1.5rem;
-  }
-
+  /* ── Topbar ── */
   .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--slate-dark);
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1.5rem;
-    background: #ffffff;
-    border: 1px solid #d8deea;
-    border-radius: 1rem;
-  }
-
-  .topbar h1,
-  .panel h2,
-  .card h3 {
-    margin: 0;
-  }
-
-  .eyebrow {
-    margin: 0 0 0.25rem;
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #6c7280;
-  }
-
-  .layout {
-    display: grid;
-    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-    gap: 1.5rem;
-  }
-
-  .panel,
-  .card,
-  .topic-card {
-    background: #fff;
-    border: 1px solid #d8deea;
-    border-radius: 1rem;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
-  }
-
-  .panel {
-    padding: 1rem;
-  }
-
-  .panel-header,
-  .section-header,
-  .detail-header {
-    display: flex;
     justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
+    padding: 0 24px;
+    height: 56px;
+    gap: 16px;
   }
 
-  .topic-list {
-    display: grid;
-    gap: 0.75rem;
-    margin-top: 1rem;
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
-  .topic-card {
-    width: 100%;
-    text-align: left;
-    padding: 1rem;
+  .topbar-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+
+  .topbar-public-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-pill);
+    transition: background 150ms;
+    white-space: nowrap;
+  }
+
+  .topbar-public-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* ── Admin layout ── */
+  .admin-layout {
+    display: flex;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 56px;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .sidebar-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text);
+  }
+
+  .btn-new-topic {
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
     cursor: pointer;
+    white-space: nowrap;
+    transition: background 150ms;
+  }
+
+  .btn-new-topic:hover {
+    background: var(--blue-hover);
+  }
+
+  /* ── Create topic form ── */
+  .create-topic-form {
+    margin: 8px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     display: grid;
-    gap: 0.5rem;
-  }
-
-  .topic-card.active {
-    border-color: #1d4ed8;
-    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.12);
-  }
-
-  .card {
-    padding: 1rem;
-    margin-top: 1rem;
+    gap: 12px;
+    flex-shrink: 0;
   }
 
   .hidden {
-    display: none;
+    display: none !important;
   }
 
-  .state-box,
-  .muted {
-    color: #5f6b7c;
+  /* ── Sidebar state ── */
+  .sidebar-state {
+    padding: 16px;
+    color: var(--muted);
+    font-size: 13px;
   }
 
-  .state-box {
-    padding: 1rem 0;
+  /* ── Topic list ── */
+  .topic-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .topic-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    border: none;
+    border-bottom: 1px solid var(--border-light);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    color: var(--text);
+    transition: background 120ms;
+  }
+
+  .topic-item:hover {
+    background: #f1f5f9;
+  }
+
+  .topic-item.selected {
+    background: var(--blue-tint);
+    border-left: 3px solid var(--blue);
+    padding-left: 13px;
+  }
+
+  .topic-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .topic-item-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .tag-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 4px;
   }
 
+  .topic-item-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .topic-item-date {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .topic-item-count {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* ── Tag pills ── */
+  .tag-pill {
+    --tag-color: #475569;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 500;
+    background: color-mix(in srgb, var(--tag-color) 15%, white);
+    color: var(--tag-color);
+    line-height: 1.6;
+  }
+
+  /* ── Shared badge ── */
   .badge {
     --badge-color: #475569;
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.65rem;
-    border-radius: 999px;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--badge-color) 14%, white);
     color: var(--badge-color);
-    font-size: 0.78rem;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 600;
   }
 
-  .count-pill,
-  .back-link,
-  .download-link,
-  .primary-button {
-    display: inline-flex;
+  /* ── Content panel ── */
+  .content-panel {
+    flex: 1;
+    min-width: 0;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .detail-empty {
+    display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 999px;
+    min-height: 200px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  /* ── Detail header ── */
+  .detail-header {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+
+  .detail-title {
+    font-size: 20px;
     font-weight: 700;
-    text-decoration: none;
+    margin: 0 0 8px;
+    color: var(--text);
   }
 
-  .count-pill {
-    padding: 0.35rem 0.7rem;
-    background: #eef2ff;
-    color: #4338ca;
-    width: fit-content;
+  .detail-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
-  .back-link,
-  .primary-button,
-  .download-link {
-    border: none;
-    padding: 0.7rem 1rem;
-    background: #1d4ed8;
-    color: #fff;
-    cursor: pointer;
-  }
-
-  .form-card,
-  .upload-form {
-    display: grid;
-    gap: 0.9rem;
-  }
-
-  label,
-  fieldset {
-    display: grid;
-    gap: 0.35rem;
+  .text-muted {
+    color: var(--muted);
+    font-size: 13px;
     margin: 0;
   }
 
-  input,
-  select {
-    width: 100%;
-    padding: 0.75rem 0.85rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 0.75rem;
+  /* ── Section card ── */
+  .section-card {
     background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+
+  .section-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .section-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    color: var(--text);
+  }
+
+  .section-card-header .section-card-title {
+    margin: 0;
+  }
+
+  /* ── Document rows ── */
+  .document-list {
+    margin-top: 4px;
+  }
+
+  .doc-item:not(:last-child) {
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .doc-row {
+    display: grid;
+    grid-template-columns: 130px 1fr auto auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 0;
+    background: #fff;
+    transition: background 120ms;
+  }
+
+  .doc-row.row-alt {
+    background: var(--bg-alt);
+    padding-left: 6px;
+    padding-right: 6px;
+    margin: 0 -6px;
+  }
+
+  .doc-row:hover {
+    background: var(--blue-tint);
+    padding-left: 6px;
+    padding-right: 6px;
+    margin: 0 -6px;
+  }
+
+  .doc-type-badge {
+    --badge-color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--badge-color) 15%, white);
+    color: var(--badge-color);
+    border: 1px solid color-mix(in srgb, var(--badge-color) 35%, white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+  }
+
+  .doc-title-link {
+    font-size: 13px;
+    color: var(--blue);
+    text-decoration: none;
+    font-weight: 500;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  .doc-title-link:hover {
+    text-decoration: underline;
+  }
+
+  .doc-size {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+    min-width: 60px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .pdf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    background: #e53935;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 120ms;
+  }
+
+  .pdf-btn:hover {
+    background: #c62828;
+  }
+
+  .delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    color: #9ca3af;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 120ms, border-color 120ms, background 120ms;
+    flex-shrink: 0;
     font: inherit;
   }
 
-  fieldset {
-    padding: 0;
-    border: none;
+  .delete-btn:hover {
+    color: #dc2626;
+    border-color: #fca5a5;
+    background: #fef2f2;
   }
 
-  .checkbox-list {
+  .delete-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .no-docs {
+    padding: 12px 0;
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0;
+  }
+
+  /* ── Attachments ── */
+  .attachment-group {
+    border-left: 2px solid var(--border);
+    margin-left: 20px;
+  }
+
+  .attachment-item .doc-row {
+    font-size: 13px;
+  }
+
+  /* ── Form styles ── */
+  .form-field {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  input:not([type="checkbox"]):not([type="file"]),
+  select,
+  textarea {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: var(--radius-sm);
+    height: 36px;
+    padding: 0 10px;
+    font-size: 14px;
+    color: var(--text);
+    background: #fff;
+    transition: border-color 180ms, box-shadow 180ms;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+
+  input:not([type="checkbox"]):not([type="file"]):focus,
+  select:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12);
+  }
+
+  .checkbox-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
   .checkbox-item {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
   }
 
-  .form-actions {
+  .btn-submit-full {
+    width: 100%;
+    height: 36px;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 150ms;
+  }
+
+  .btn-submit-full:hover {
+    background: var(--blue-hover);
+  }
+
+  .btn-cancel-link {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+    padding: 4px 0;
+    width: 100%;
+    text-decoration: underline;
+  }
+
+  .btn-cancel-link:hover {
+    color: var(--text);
+  }
+
+  /* ── Upload form ── */
+  .upload-form {
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
+    gap: 16px;
   }
 
-  .document-list {
+  .form-grid {
     display: grid;
-    gap: 0.85rem;
-    margin-top: 1rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
   }
 
-  .document-row {
-    display: grid;
-    gap: 0.75rem;
-    padding: 1rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.9rem;
-  }
-
-  .document-title-row {
+  /* ── File drop area ── */
+  .file-drop-area {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.65rem;
     align-items: center;
-    margin-bottom: 0.35rem;
+    justify-content: center;
+    min-height: 80px;
+    border: 2px dashed #d1d5db;
+    border-radius: var(--radius);
+    background: #fafafa;
+    cursor: pointer;
+    transition: border-color 150ms, background 150ms;
+    text-align: center;
+    padding: 16px;
   }
 
-  .meta-row {
-    margin: 0;
+  .file-drop-area:hover {
+    border-color: var(--blue);
+    background: var(--blue-tint);
   }
 
-  .attachment-group {
-    display: grid;
-    gap: 0.65rem;
-    padding-left: 1rem;
-    border-left: 2px solid #dbe4ff;
+  .file-drop-text {
+    font-size: 13px;
+    color: var(--muted);
+    pointer-events: none;
   }
 
-  .attachment-row {
-    background: #f8fbff;
+  .file-input-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
-  @media (max-width: 860px) {
-    .layout {
+  /* ── Upload button ── */
+  .btn-upload {
+    height: 40px;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 150ms, opacity 150ms;
+    padding: 0 24px;
+    align-self: flex-start;
+  }
+
+  .btn-upload:hover:not(:disabled) {
+    background: var(--blue-hover);
+  }
+
+  .btn-upload:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* ── Upload error ── */
+  .upload-error {
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: var(--radius-sm);
+    color: #dc2626;
+    font-size: 13px;
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    top: 72px;
+    right: 24px;
+    z-index: 1000;
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideIn 200ms ease;
+  }
+
+  .toast-success {
+    background: #ecfdf5;
+    border: 1px solid #6ee7b7;
+    color: #065f46;
+  }
+
+  .toast-error {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    .admin-layout {
+      flex-direction: column;
+    }
+
+    .sidebar {
+      width: 100%;
+      position: static;
+      height: auto;
+      max-height: 50vh;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .content-panel {
+      padding: 16px;
+    }
+
+    .form-grid {
       grid-template-columns: 1fr;
     }
 
-    .topbar,
-    .panel-header,
-    .section-header,
-    .detail-header {
-      flex-direction: column;
-      align-items: flex-start;
+    .doc-row {
+      grid-template-columns: auto 1fr auto auto;
+      font-size: 12px;
+    }
+
+    .doc-size {
+      display: none;
+    }
+
+    .topbar {
+      padding: 0 16px;
+    }
+
+    .btn-upload {
+      width: 100%;
+      align-self: stretch;
+    }
+
+    .toast {
+      left: 16px;
+      right: 16px;
+      top: 64px;
     }
   }
 </style>
