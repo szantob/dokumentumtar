@@ -13,8 +13,17 @@ function parseOptionalInteger(value: FormDataEntryValue | null): number | null {
 }
 
 function sanitizeFilename(filename: string): string {
-  const sanitized = filename.replace(/\s+/g, '_').replace(/[\\/]+/g, '-');
-  return sanitized || 'feltoltes.bin';
+  const basename = filename.split(/[/\\]/).pop() ?? '';
+  const sanitized = basename
+    .normalize('NFKC')
+    .replace(/[\u0000-\u001f\u007f]+/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/[^A-Za-z0-9._-]/g, '-')
+    .replace(/\.\.+/g, '.')
+    .replace(/^\.+/, '')
+    .replace(/-+/g, '-');
+
+  return sanitized || 'upload.bin';
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
@@ -42,7 +51,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const { DB, DOKUMENTUMTAR } = getEnv(locals as App.Locals);
   const fileName = sanitizeFilename(file.name);
-  const key = `${topicId}/${Date.now()}_${fileName}`;
+  const uploadId = typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 10);
+  const key = `${topicId}/${Date.now()}_${uploadId}_${fileName}`;
 
   await DOKUMENTUMTAR.put(key, await file.arrayBuffer(), {
     httpMetadata: {

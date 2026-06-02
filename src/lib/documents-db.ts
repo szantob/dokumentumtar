@@ -1,6 +1,6 @@
 import type { Document, DocumentType, Tag, Topic } from '../types/documents';
 
-interface TopicRow extends Omit<Topic, 'tags' | 'documents'> {}
+type TopicRow = Omit<Topic, 'tags' | 'documents'>;
 
 interface DocumentRow extends Omit<Document, 'document_type' | 'attachments'> {
   updated_at: string;
