@@ -1,0 +1,642 @@
+---
+export const prerender = false;
+import BaseHead from '../../components/BaseHead.astro';
+---
+
+<!doctype html>
+<html lang="hu">
+  <head>
+    <BaseHead title="Dokumentumtár Admin" description="Dokumentumtár adminisztráció" />
+  </head>
+  <body>
+    <main class="admin-page">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Admin felület</p>
+          <h1>Dokumentumtár Admin</h1>
+        </div>
+        <a href="/" class="back-link">Nyilvános nézet</a>
+      </header>
+
+      <div class="layout">
+        <section class="panel topics-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Témák</h2>
+              <p>Válassz témát vagy hozz létre újat.</p>
+            </div>
+            <button id="toggleTopicForm" class="primary-button" type="button">+ Új téma</button>
+          </div>
+
+          <form id="createTopicForm" class="card form-card hidden">
+            <h3>Új téma létrehozása</h3>
+            <label>
+              <span>Cím</span>
+              <input type="text" name="title" required />
+            </label>
+            <label>
+              <span>Esemény dátuma</span>
+              <input type="datetime-local" name="event_date" />
+            </label>
+            <fieldset>
+              <legend>Címkék</legend>
+              <div id="tagCheckboxList" class="checkbox-list"></div>
+            </fieldset>
+            <div class="form-actions">
+              <button type="submit" class="primary-button">Téma mentése</button>
+            </div>
+          </form>
+
+          <div id="topicsState" class="state-box">Témák betöltése…</div>
+          <div id="topicsList" class="topic-list"></div>
+        </section>
+
+        <section class="panel detail-panel">
+          <div id="detailState" class="state-box">Válassz ki egy témát a részletekhez.</div>
+          <div id="topicDetail" class="hidden">
+            <div class="detail-header card">
+              <div>
+                <p class="eyebrow">Kiválasztott téma</p>
+                <h2 id="detailTitle"></h2>
+                <p id="detailDate" class="muted"></p>
+              </div>
+              <div id="detailTags" class="tag-row"></div>
+            </div>
+
+            <section class="card">
+              <div class="section-header">
+                <h3>Dokumentumok</h3>
+                <p id="detailCount" class="muted"></p>
+              </div>
+              <div id="documentList" class="document-list"></div>
+            </section>
+
+            <section class="card">
+              <h3>Dokumentum feltöltése</h3>
+              <form id="uploadForm" class="upload-form">
+                <label>
+                  <span>Dokumentum típusa</span>
+                  <select name="document_type_id" id="documentTypeSelect" required></select>
+                </label>
+                <label>
+                  <span>Cím</span>
+                  <input type="text" name="title" id="documentTitleInput" required />
+                </label>
+                <label>
+                  <span>Szülő dokumentum (melléklet)</span>
+                  <select name="parent_id" id="parentDocumentSelect">
+                    <option value="">Nincs</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Iktatószám</span>
+                  <input type="text" name="reference_no" />
+                </label>
+                <label>
+                  <span>Fájl</span>
+                  <input type="file" name="file" id="fileInput" accept=".pdf,.doc,.docx,.xls,.xlsx" required />
+                </label>
+                <input type="hidden" name="topic_id" id="topicIdInput" />
+                <div class="form-actions">
+                  <button type="submit" class="primary-button">Feltöltés</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>
+
+<script>
+  interface Tag {
+    id: number;
+    name: string;
+    slug: string;
+    color: string | null;
+    sort_order: number;
+  }
+
+  interface DocumentType {
+    id: number;
+    name: string;
+    slug: string;
+    color: string | null;
+    sort_order: number;
+  }
+
+  interface Document {
+    id: number;
+    topic_id: number;
+    parent_id: number | null;
+    document_type_id: number;
+    title: string;
+    reference_no: string | null;
+    r2_key: string;
+    file_name: string;
+    file_size: number;
+    mime_type: string;
+    sort_order: number;
+    is_active: number;
+    created_at: string;
+    document_type?: DocumentType;
+    attachments?: Document[];
+  }
+
+  interface Topic {
+    id: number;
+    title: string;
+    event_date: string | null;
+    document_count: number | null;
+    sort_order: number;
+    is_public: number;
+    created_at: string;
+    updated_at: string;
+    tags?: Tag[];
+    documents?: Document[];
+  }
+
+  const topicsListEl = document.getElementById('topicsList') as HTMLDivElement;
+  const topicsStateEl = document.getElementById('topicsState') as HTMLDivElement;
+  const detailStateEl = document.getElementById('detailState') as HTMLDivElement;
+  const topicDetailEl = document.getElementById('topicDetail') as HTMLDivElement;
+  const detailTitleEl = document.getElementById('detailTitle') as HTMLHeadingElement;
+  const detailDateEl = document.getElementById('detailDate') as HTMLParagraphElement;
+  const detailTagsEl = document.getElementById('detailTags') as HTMLDivElement;
+  const detailCountEl = document.getElementById('detailCount') as HTMLParagraphElement;
+  const documentListEl = document.getElementById('documentList') as HTMLDivElement;
+  const tagCheckboxListEl = document.getElementById('tagCheckboxList') as HTMLDivElement;
+  const createTopicForm = document.getElementById('createTopicForm') as HTMLFormElement;
+  const uploadForm = document.getElementById('uploadForm') as HTMLFormElement;
+  const parentDocumentSelect = document.getElementById('parentDocumentSelect') as HTMLSelectElement;
+  const documentTypeSelect = document.getElementById('documentTypeSelect') as HTMLSelectElement;
+  const topicIdInput = document.getElementById('topicIdInput') as HTMLInputElement;
+  const toggleTopicFormButton = document.getElementById('toggleTopicForm') as HTMLButtonElement;
+  const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+  const documentTitleInput = document.getElementById('documentTitleInput') as HTMLInputElement;
+
+  let topics: Topic[] = [];
+  let tags: Tag[] = [];
+  let documentTypes: DocumentType[] = [];
+  let selectedTopicId: number | null = null;
+
+  function escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatDate(value: string | null): string {
+    if (!value) return 'Nincs esemény dátum';
+    return new Date(value).toLocaleString('hu-HU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function renderBadge(label: string, color: string | null, className = 'badge'): string {
+    const style = color ? ` style="--badge-color:${escapeHtml(color)}"` : '';
+    return `<span class="${className}"${style}>${escapeHtml(label)}</span>`;
+  }
+
+  function renderTopics(): void {
+    topicsStateEl.style.display = topics.length > 0 ? 'none' : 'block';
+    topicsStateEl.textContent = topics.length > 0 ? '' : 'Nincs még rögzített téma.';
+
+    topicsListEl.innerHTML = topics.map((topic) => {
+      const active = topic.id === selectedTopicId ? ' active' : '';
+      const badges = (topic.tags ?? []).map((tag) => renderBadge(tag.name, tag.color, 'badge tag-badge')).join('');
+      return `<button type="button" class="topic-card${active}" data-topic-id="${topic.id}">
+        <strong>${escapeHtml(topic.title)}</strong>
+        <span class="muted">${escapeHtml(formatDate(topic.event_date))}</span>
+        <div class="tag-row">${badges}</div>
+        <span class="count-pill">${topic.document_count ?? 0} dokumentum</span>
+      </button>`;
+    }).join('');
+
+    topicsListEl.querySelectorAll<HTMLButtonElement>('.topic-card').forEach((button) => {
+      button.addEventListener('click', () => {
+        const topicId = Number(button.dataset.topicId);
+        void selectTopic(topicId);
+      });
+    });
+  }
+
+  function renderTagCheckboxes(): void {
+    tagCheckboxListEl.innerHTML = tags.map((tag) => `
+      <label class="checkbox-item">
+        <input type="checkbox" name="tag_ids" value="${tag.id}" />
+        ${renderBadge(tag.name, tag.color, 'badge tag-badge')}
+      </label>
+    `).join('');
+  }
+
+  function renderDocumentTypeOptions(): void {
+    documentTypeSelect.innerHTML = documentTypes.map((type) =>
+      `<option value="${type.id}">${escapeHtml(type.name)}</option>`
+    ).join('');
+  }
+
+  function renderDocumentRows(documents: Document[], level = 0): string {
+    if (documents.length === 0) {
+      return '<p class="muted">Ehhez a témához még nincs feltöltött dokumentum.</p>';
+    }
+
+    return documents.map((document) => {
+      const attachmentMarkup = document.attachments && document.attachments.length > 0
+        ? `<div class="attachment-group">${renderDocumentRows(document.attachments, level + 1)}</div>`
+        : '';
+      const downloadPath = `/api/download/${document.r2_key.split('/').map(encodeURIComponent).join('/')}`;
+      return `<article class="document-row${level > 0 ? ' attachment-row' : ''}">
+        <div>
+          <div class="document-title-row">
+            ${document.document_type ? renderBadge(document.document_type.name, document.document_type.color) : ''}
+            <strong>${escapeHtml(document.title)}</strong>
+          </div>
+          <p class="muted meta-row">
+            ${escapeHtml(formatSize(document.file_size))}
+            ${document.reference_no ? ` · Iktatószám: ${escapeHtml(document.reference_no)}` : ''}
+          </p>
+        </div>
+        <a href="${downloadPath}" class="download-link" download>Letöltés</a>
+        ${attachmentMarkup}
+      </article>`;
+    }).join('');
+  }
+
+  function populateParentOptions(documents: Document[]): void {
+    const options = ['<option value="">Nincs</option>'];
+    documents.forEach((document) => {
+      options.push(`<option value="${document.id}">${escapeHtml(document.title)}</option>`);
+    });
+    parentDocumentSelect.innerHTML = options.join('');
+  }
+
+  async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(url, init);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(typeof data.error === 'string' ? data.error : `HTTP ${response.status}`);
+    }
+    return response.json() as Promise<T>;
+  }
+
+  async function loadTopics(openTopicId?: number): Promise<void> {
+    topicsStateEl.textContent = 'Témák betöltése…';
+    topicsStateEl.style.display = 'block';
+    topics = await fetchJson<Topic[]>('/api/admin/topics');
+    renderTopics();
+
+    if (typeof openTopicId === 'number') {
+      await selectTopic(openTopicId);
+    } else if (selectedTopicId) {
+      await selectTopic(selectedTopicId);
+    }
+  }
+
+  async function selectTopic(topicId: number): Promise<void> {
+    selectedTopicId = topicId;
+    renderTopics();
+    detailStateEl.style.display = 'block';
+    detailStateEl.textContent = 'Téma betöltése…';
+    topicDetailEl.classList.add('hidden');
+
+    const topic = await fetchJson<Topic>(`/api/topics/${topicId}`);
+    detailTitleEl.textContent = topic.title;
+    detailDateEl.textContent = formatDate(topic.event_date);
+    detailTagsEl.innerHTML = (topic.tags ?? []).map((tag) => renderBadge(tag.name, tag.color, 'badge tag-badge')).join('');
+    detailCountEl.textContent = `${topic.documents?.length ?? 0} fő dokumentum`;
+    documentListEl.innerHTML = renderDocumentRows(topic.documents ?? []);
+    populateParentOptions(topic.documents ?? []);
+    topicIdInput.value = String(topic.id);
+    detailStateEl.style.display = 'none';
+    topicDetailEl.classList.remove('hidden');
+  }
+
+  async function initialize(): Promise<void> {
+    [tags, documentTypes] = await Promise.all([
+      fetchJson<Tag[]>('/api/admin/tags'),
+      fetchJson<DocumentType[]>('/api/admin/document-types'),
+    ]);
+    renderTagCheckboxes();
+    renderDocumentTypeOptions();
+    await loadTopics();
+  }
+
+  toggleTopicFormButton.addEventListener('click', () => {
+    createTopicForm.classList.toggle('hidden');
+  });
+
+  createTopicForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(createTopicForm);
+    const title = String(formData.get('title') ?? '').trim();
+    const eventDate = String(formData.get('event_date') ?? '').trim();
+    const tagIds = formData.getAll('tag_ids').map((value) => Number(value));
+
+    const created = await fetchJson<Topic>('/api/admin/topics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        event_date: eventDate || null,
+        tag_ids: tagIds,
+      }),
+    });
+
+    createTopicForm.reset();
+    createTopicForm.classList.add('hidden');
+    await loadTopics(created.id);
+  });
+
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    if (!file || documentTitleInput.value.trim()) {
+      return;
+    }
+
+    documentTitleInput.value = file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+  });
+
+  uploadForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!selectedTopicId) {
+      throw new Error('Nincs kiválasztott téma.');
+    }
+
+    const formData = new FormData(uploadForm);
+    await fetchJson('/api/admin/documents', {
+      method: 'POST',
+      body: formData,
+    });
+
+    uploadForm.reset();
+    topicIdInput.value = String(selectedTopicId);
+    await loadTopics(selectedTopicId);
+  });
+
+  void initialize().catch((error) => {
+    topicsStateEl.textContent = error instanceof Error ? error.message : 'Hiba történt.';
+    detailStateEl.textContent = 'Az admin felület nem tölthető be.';
+  });
+</script>
+
+<style>
+  :global(body) {
+    margin: 0;
+    background: #f4f6fb;
+  }
+
+  .admin-page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    background: #ffffff;
+    border: 1px solid #d8deea;
+    border-radius: 1rem;
+  }
+
+  .topbar h1,
+  .panel h2,
+  .card h3 {
+    margin: 0;
+  }
+
+  .eyebrow {
+    margin: 0 0 0.25rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6c7280;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .panel,
+  .card,
+  .topic-card {
+    background: #fff;
+    border: 1px solid #d8deea;
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  }
+
+  .panel {
+    padding: 1rem;
+  }
+
+  .panel-header,
+  .section-header,
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .topic-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .topic-card {
+    width: 100%;
+    text-align: left;
+    padding: 1rem;
+    cursor: pointer;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .topic-card.active {
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.12);
+  }
+
+  .card {
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .state-box,
+  .muted {
+    color: #5f6b7c;
+  }
+
+  .state-box {
+    padding: 1rem 0;
+  }
+
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .badge {
+    --badge-color: #475569;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--badge-color) 14%, white);
+    color: var(--badge-color);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .count-pill,
+  .back-link,
+  .download-link,
+  .primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .count-pill {
+    padding: 0.35rem 0.7rem;
+    background: #eef2ff;
+    color: #4338ca;
+    width: fit-content;
+  }
+
+  .back-link,
+  .primary-button,
+  .download-link {
+    border: none;
+    padding: 0.7rem 1rem;
+    background: #1d4ed8;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .form-card,
+  .upload-form {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  label,
+  fieldset {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+  }
+
+  input,
+  select {
+    width: 100%;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.75rem;
+    background: #fff;
+    font: inherit;
+  }
+
+  fieldset {
+    padding: 0;
+    border: none;
+  }
+
+  .checkbox-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .checkbox-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .document-list {
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 1rem;
+  }
+
+  .document-row {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.9rem;
+  }
+
+  .document-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: center;
+    margin-bottom: 0.35rem;
+  }
+
+  .meta-row {
+    margin: 0;
+  }
+
+  .attachment-group {
+    display: grid;
+    gap: 0.65rem;
+    padding-left: 1rem;
+    border-left: 2px solid #dbe4ff;
+  }
+
+  .attachment-row {
+    background: #f8fbff;
+  }
+
+  @media (max-width: 860px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+
+    .topbar,
+    .panel-header,
+    .section-header,
+    .detail-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
