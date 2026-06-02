@@ -51,9 +51,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const { DB, DOKUMENTUMTAR } = getEnv(locals as App.Locals);
   const fileName = sanitizeFilename(file.name);
-  const uploadId = typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2, 10);
+  const uploadId = crypto.randomUUID();
   const key = `${topicId}/${Date.now()}_${uploadId}_${fileName}`;
 
   await DOKUMENTUMTAR.put(key, await file.arrayBuffer(), {
