@@ -37,7 +37,7 @@ import BaseHead from '../../components/BaseHead.astro';
           </div>
           <div class="form-field">
             <span class="form-label">Címkék</span>
-            <div id="tagCheckboxList" class="checkbox-grid"></div>
+            <div id="tagCheckboxList" class="checkbox-two-col"></div>
           </div>
           <button type="submit" class="btn-submit-full">Téma mentése</button>
           <button type="button" id="cancelTopicForm" class="btn-cancel-link">Mégsem</button>
@@ -292,7 +292,7 @@ import BaseHead from '../../components/BaseHead.astro';
           <a href="${downloadPath}" class="doc-title-link" download>${escapeHtml(document.title)}</a>
           <span class="doc-size">${escapeHtml(formatSize(document.file_size))}</span>
           <a href="${downloadPath}" class="pdf-btn" download>PDF</a>
-          <button type="button" class="delete-btn" data-doc-id="${document.id}" title="Dokumentum törlése">✕</button>
+          <button type="button" class="delete-btn" data-doc-id="${document.id}" title="Dokumentum törlése" aria-label="Dokumentum törlése">✕</button>
         </div>
         ${attachmentMarkup}
       </div>`;
@@ -950,7 +950,7 @@ import BaseHead from '../../components/BaseHead.astro';
     box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12);
   }
 
-  .checkbox-grid {
+  .checkbox-two-col {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
