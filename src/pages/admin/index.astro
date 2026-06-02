@@ -285,7 +285,7 @@ import BaseHead from '../../components/BaseHead.astro';
       const downloadPath = `/api/download/${document.r2_key.split('/').map(encodeURIComponent).join('/')}`;
       const badgeColor = document.document_type?.color ?? '#475569';
       const typeBadge = `<span class="doc-type-badge" style="--badge-color:${escapeHtml(badgeColor)}">${escapeHtml(document.document_type?.name ?? 'Melléklet')}</span>`;
-      const rowClass = `doc-row${level === 0 && idx % 2 !== 0 ? ' row-even' : ''}${level > 0 ? ' attachment-row' : ''}`;
+      const rowClass = `doc-row${level === 0 && idx % 2 !== 0 ? ' row-alt' : ''}${level > 0 ? ' attachment-row' : ''}`;
       return `<div class="doc-item${level > 0 ? ' attachment-item' : ''}">
         <div class="${rowClass}">
           ${typeBadge}
@@ -794,7 +794,7 @@ import BaseHead from '../../components/BaseHead.astro';
     transition: background 120ms;
   }
 
-  .doc-row.row-even {
+  .doc-row.row-alt {
     background: var(--bg-alt);
     padding-left: 6px;
     padding-right: 6px;
